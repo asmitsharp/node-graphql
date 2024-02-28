@@ -1,22 +1,35 @@
-import { createHandler } from 'graphql-http/lib/use/http';
-import { GraphQLSchema, GraphQLObjectType, GraphQLString } from 'graphql';
-import express from 'express';
+const { ApolloServer } = require('apollo-server-express')
+const { loadFilesSync } = require('@graphql-tools/load-files')
+const { makeExecutableSchema } = require('@graphql-tools/schema')
+const express = require('express')
 
-const schema = new GraphQLSchema({
-  query: new GraphQLObjectType({
-    name: 'Query',
-    fields: {
-      hello: {
-        type: GraphQLString,
-        resolve: () => 'world',
-      },
-    },
-  }),
-});
+const typesArray = loadFilesSync('**/*', {
+  extensions: ['graphql'],
+})
+const resolversArray = loadFilesSync('**/*', {
+  extensions: ['resolvers.js'],
+})
+
+async function startApolloServer() {
+  const app = express()
+
+  const schema = makeExecutableSchema({
+  typeDefs: typesArray,
+  resolvers: resolversArray,
+  })
+
+  const server = new ApolloServer({
+    schema
+  })
+  
+  await server.start()
+  server.applyMiddleware({ app, path: '/graphql'})
+
+  app.listen(4000, () => {
+  console.log('Listening to port 4000')
+  })
+}
+
+startApolloServer()
 
 
-const app = express();
-app.all('/graphql', createHandler({ schema }));
-
-app.listen({ port: 4000 });
-console.log('Listening to port 4000');
